@@ -1,0 +1,176 @@
+/* ==========================================================================
+   Jarvis — reminders, notes, updates, capture, brain settings
+   ========================================================================== */
+
+/* Lists re-render live; only animate the first time a page appears */
+.settled .reveal, .settled .event-row { animation: none; }
+
+/* ---------- Reminder rows ---------- */
+.task-row { align-items: center; }
+.row-open {
+  flex: 1; min-width: 0; display: block; padding: 0; border: 0; background: none;
+  text-align: left; color: inherit; cursor: pointer;
+}
+.row-note { color: var(--label-3); }
+.task-row.soon { background: linear-gradient(90deg, var(--accent-soft), transparent 70%); }
+.task-row.leaving { animation: fadeOut 0.4s var(--ease) 0.2s forwards; }
+.row-sub.overdue { color: var(--red); }
+.note-row .icon { color: var(--gold); }
+
+/* ---------- Capture ---------- */
+.capture { display: flex; flex-direction: column; gap: 10px; }
+.quick-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.quick-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 36px; padding: 0 12px; border: 0; border-radius: 18px;
+  background: var(--surface); color: var(--label); font-size: 0.85rem; font-weight: 500;
+  box-shadow: inset 0 0 0 0.5px var(--sep);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  transition: transform 0.35s var(--ease), background 0.2s;
+}
+.quick-chip .icon { width: 16px; height: 16px; color: var(--accent-text); }
+.quick-chip:active { transform: scale(0.96); }
+@media (hover: hover) { .quick-chip:hover { background: var(--accent-soft); transform: translateY(-1px); } }
+
+.capture-input { font-size: 1.12rem; min-height: 56px; }
+.when-row { display: flex; align-items: center; gap: 8px; margin-top: -8px; }
+.when-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 36px; padding: 0 14px; border: 0; border-radius: 18px;
+  background: var(--fill); color: var(--label-2); font-size: 0.88rem; font-weight: 500;
+  transition: background 0.3s var(--ease), color 0.3s;
+}
+.when-pill .icon { width: 16px; height: 16px; }
+.when-pill.set { background: var(--accent-soft); color: var(--accent-text); animation: pop 0.35s var(--ease); }
+.text-btn.small { min-height: 32px; font-size: 0.85rem; padding: 0 8px; }
+
+.note-editor { display: flex; flex-direction: column; gap: 6px; padding: 4px 4px 0; }
+.note-title.display { font-size: 1.9rem; min-height: 44px; }
+.note-body { min-height: 220px; font-size: 1rem; line-height: 1.6; }
+
+/* ---------- Timeline (updates) ---------- */
+.timeline { list-style: none; margin: 0; padding: 0 0 0 6px; display: flex; flex-direction: column; }
+.timeline li { position: relative; padding-left: 20px; }
+.timeline li::before {
+  content: ""; position: absolute; left: 0; top: 14px; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.timeline li:first-child::before { background: var(--gold); box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold) 20%, transparent); }
+.timeline li::after {
+  content: ""; position: absolute; left: 4px; top: 26px; bottom: -8px; width: 1px; background: var(--sep);
+}
+.timeline li:last-child::after { display: none; }
+.timeline button {
+  display: flex; flex-direction: column; gap: 2px; width: 100%;
+  padding: 8px 10px; margin: 0 0 4px; border: 0; border-radius: 10px;
+  background: none; color: var(--label); text-align: left; font-size: 0.95rem; line-height: 1.4;
+}
+.timeline time { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--label-3); }
+@media (hover: hover) { .timeline button:hover { background: var(--fill); } }
+
+.update-composer {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 8px 8px 14px; margin-bottom: 20px; border-radius: 16px;
+  background: var(--surface); box-shadow: inset 0 0.5px 0 var(--glass-edge), var(--shadow-sm);
+  -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+}
+.update-composer .icon { width: 20px; height: 20px; color: var(--accent-text); }
+.update-composer .input { flex: 1; }
+
+/* ---------- Notes grid ---------- */
+.notes-list { margin-top: 16px; }
+.note-grid { columns: 1; column-gap: 14px; }
+@media (min-width: 560px) { .note-grid { columns: 2; } }
+@media (min-width: 1200px) { .note-grid { columns: 3; } }
+.note-card {
+  display: flex; flex-direction: column; gap: 8px; width: 100%;
+  break-inside: avoid; margin: 0 0 14px; padding: 18px;
+  border: 0; border-radius: 18px; text-align: left; color: var(--label);
+  background: var(--surface); box-shadow: inset 0 0.5px 0 var(--glass-edge), var(--shadow-sm);
+  -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+  transition: transform 0.45s var(--ease), box-shadow 0.45s var(--ease);
+}
+.note-card-head { display: flex; align-items: flex-start; gap: 10px; }
+.note-card h3 { flex: 1; font-size: 1.45rem; line-height: 1.1; }
+.note-card p {
+  margin: 0; color: var(--label-2); font-size: 0.9rem; line-height: 1.5; white-space: pre-line;
+  display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden;
+}
+.note-card time { font-size: 0.72rem; color: var(--label-3); font-weight: 500; }
+.note-card.pinned { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 40%, transparent), var(--shadow-sm); }
+.pin-dot { width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: var(--gold); flex: none; }
+.note-card:active { transform: scale(0.98); }
+@media (hover: hover) { .note-card:hover { transform: translateY(-3px); box-shadow: inset 0 0.5px 0 var(--glass-edge), 0 18px 40px rgba(0, 0, 0, 0.12); } }
+
+.empty-hero { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 48px 16px; color: var(--label-2); }
+.empty-hero > .icon { width: 40px; height: 40px; color: var(--gold); }
+.empty-hero .display { font-size: 2.2rem; color: var(--label); }
+.empty-hero .btn { margin-top: 8px; }
+
+/* ---------- Reminder alert banner ---------- */
+.reminder-banner {
+  position: fixed; z-index: 70; left: 50%; top: calc(var(--safe-t) + 12px);
+  width: min(460px, calc(100vw - 24px));
+  display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px;
+  border-radius: 20px; background: var(--surface-solid); color: var(--label);
+  box-shadow: var(--shadow-lg), inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+  transform: translate(-50%, -160%); transition: transform 0.6s var(--ease);
+}
+.reminder-banner.show { transform: translate(-50%, 0); }
+.rb-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rb-text strong { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb-text span { font-size: 0.8rem; color: var(--label-2); }
+@media (min-width: 960px) { .reminder-banner { left: calc(50% + var(--side-w) / 2); } }
+
+/* ---------- Toast undo ---------- */
+.toast-action {
+  margin-left: 6px; min-height: 32px; padding: 0 10px; border: 0; border-radius: 16px;
+  background: var(--accent-soft); color: var(--accent-text); font-weight: 600; font-size: 0.85rem;
+}
+
+/* ---------- Brain settings ---------- */
+.model-row { align-items: center; }
+.radio {
+  flex: none; width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px solid var(--label-3); transition: all 0.25s var(--ease);
+}
+.model-row.selected .radio { border: 7px solid var(--accent); }
+.model-row .size { margin-left: 8px; font-size: 0.8rem; color: var(--label-3); font-weight: 500; }
+.download-row { align-items: center; flex-wrap: wrap; }
+.download-row > .icon { color: var(--accent-text); }
+.btn-pair { display: flex; gap: 8px; }
+.progress { height: 6px; margin-top: 8px; border-radius: 3px; background: var(--fill); overflow: hidden; }
+.progress i {
+  display: block; height: 100%; transform-origin: left; transform: scaleX(0.02);
+  background: linear-gradient(90deg, var(--glow-a), var(--gold));
+  transition: transform 0.4s var(--ease);
+}
+
+/* ---------- Chat extras ---------- */
+.suggestion.accent { display: flex; align-items: center; gap: 10px; color: var(--accent-text); font-weight: 500; }
+
+/* ---------- Welcome ---------- */
+.welcome-hero h1.display { font-size: clamp(3rem, 12vw, 4.4rem); font-weight: 400; line-height: 1; }
+.welcome-actions .input.boxed { text-align: left; margin-bottom: 4px; font-size: 1.05rem; min-height: 50px; padding: 0 16px; border-radius: 14px; background: var(--surface); box-shadow: inset 0 0 0 0.5px var(--sep); }
+.welcome-foot { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--label-3); font-size: 0.8rem; }
+.welcome .feature.reveal:nth-child(2) { --i: 1; }
+.welcome .feature.reveal:nth-child(3) { --i: 2; }
+
+/* ---------- Reminders page ---------- */
+.see-all {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 0.82rem; font-weight: 500; color: var(--accent-text);
+}
+.alert-mark {
+  flex: none; display: inline-flex; align-items: center; gap: 3px;
+  color: var(--label-3); font-size: 0.72rem;
+}
+.alert-mark small { font-size: 0.72rem; }
+.task-row.done .row-title { color: var(--label-2); text-decoration: line-through; }
+.task-row.done:not(.leaving) .check::before { background: var(--accent); border-color: var(--accent); }
+.task-row.done:not(.leaving) .check .icon { opacity: 1; }
+.notify-card { margin-bottom: 16px; border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); }
+.notify-card > .icon { color: var(--gold); }
+
+/* Vertical stack for lists nested inside a page */
+.stack { display: flex; flex-direction: column; gap: 24px; }

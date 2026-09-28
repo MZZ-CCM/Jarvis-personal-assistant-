@@ -13,7 +13,8 @@ import { openJarvisMode } from './views/voice.js';
 import { openCapture } from './views/capture.js';
 import { openDraft } from './views/draft.js';
 import { startReminderClock, handleAction } from './notify.js';
-import { loadLocal } from './ai.js';
+import { loadLocal, verifyDownloads } from './ai.js';
+import { syncPush, disablePush } from './push.js';
 
 const TABS = [
   ['today', 'Today', 'calendar', '1'],
@@ -201,12 +202,19 @@ async function enter(user) {
   D.startSync(user).catch(() => {});
   const profile = await D.loadProfile().catch(() => null);
   if (profile) save(profile, { fromServer: true });
+  syncPush(); // keep this device registered for background notifications
+  // Your brain choice came with your account; check whether this device already has it.
+  if (settings.engine === 'local') await verifyDownloads();
   lastSeg = null;
   route();
+  if (isWide() && settings.engine === 'local' && settings.downloaded?.[settings.localModel]) {
+    setTimeout(() => loadLocal().catch(() => {}), 2500);
+  }
 }
 
 function leave() {
   if (!currentUser) return;
+  disablePush();                    // this device stops receiving the previous person's reminders
   D.stopSync({ wipe: true });        // this person's cached data leaves the device
   forgetPerson();
   setScope(null);
@@ -267,11 +275,6 @@ async function boot() {
 
   startReminderClock();
 
-  // On a computer, if the on-device brain is already downloaded, wake it quietly in
-  // the background so the first answer is quick. (Phones wake it on first use to save memory.)
-  if (isWide() && settings.engine === 'local' && settings.downloaded?.[settings.localModel]) {
-    setTimeout(() => loadLocal().catch(() => {}), 2500);
-  }
 
   // The service worker powers offline use and notification buttons (localhost counts as secure).
   if ('serviceWorker' in navigator && window.isSecureContext) {

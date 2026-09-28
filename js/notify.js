@@ -12,6 +12,7 @@ import { settings, save, local } from './store.js';
 import { h, icon, toast } from './ui.js';
 import { fmtTime, isIOS, isStandalone } from './util.js';
 import { whenLabel } from './when.js';
+import { enablePush, pushActive } from './push.js';
 
 export const ALERT_OPTIONS = [
   [-1, 'No alert'], [0, 'At time of event'], [5, '5 minutes before'], [10, '10 minutes before'],
@@ -42,7 +43,10 @@ export async function requestNotifications() {
   if (!('Notification' in window)) return notificationState();
   if (Notification.permission !== 'default') return Notification.permission;
   const result = await Notification.requestPermission();
-  if (result === 'granted') save({ notify: true });
+  if (result === 'granted') {
+    save({ notify: true });
+    enablePush().catch(() => {}); // background notifications for this device
+  }
   return result;
 }
 
@@ -97,6 +101,20 @@ async function systemNotify(title, { body, tag, data, actions = [] } = {}) {
   }
 }
 
+/** A general-purpose alert (timers etc.): system notification + chime + toast. */
+export async function alertNow(title, body, { tag = `jarvis-${Date.now()}` } = {}) {
+  await systemNotify(title, { body, tag });
+  if (settings.sound !== false) playChime();
+  toast(`${title} · ${body}`);
+}
+
+export { playChime };
+
+// Focus protocol: hold reminder alerts until a time, then deliver any that came due.
+let pausedUntil = 0;
+export const pauseAlerts = (untilMs) => { pausedUntil = untilMs; };
+export const alertsPausedUntil = () => pausedUntil;
+
 export async function sendTestNotification() {
   const state = notificationState();
   if (state === 'needs-install') throw new Error('On iPhone, add Jarvis to your Home Screen first (Share › Add to Home Screen), then turn on notifications from there.');
@@ -111,10 +129,13 @@ export async function sendTestNotification() {
 function fire(r, { missed = false } = {}) {
   const due = r.time ? fmtTime(D.dueAt(r)) : 'Today';
   const body = missed ? `Missed · ${whenLabel(r.date, r.time)}` : r.time ? `${due}${r.notes ? ` · ${r.notes}` : ''}` : r.notes || 'Due today';
-  systemNotify(r.title, {
-    body, tag: r.id, data: { id: r.id },
-    actions: [{ action: 'done', title: 'Done' }, { action: 'snooze', title: 'Snooze 10 min' }],
-  });
+  // With background push on, the server sends the system notification — don't double up.
+  if (!pushActive() || missed) {
+    systemNotify(r.title, {
+      body, tag: r.id, data: { id: r.id },
+      actions: [{ action: 'done', title: 'Done' }, { action: 'snooze', title: 'Snooze 10 min' }],
+    });
+  }
   if (settings.sound !== false && document.visibilityState === 'visible') playChime();
   banner(r, missed);
   if (settings.speak && 'speechSynthesis' in window && document.visibilityState === 'visible') {
@@ -148,7 +169,7 @@ function shownAlerts() {
 }
 
 function check({ launch = false } = {}) {
-  if (!settings.notify) return;
+  if (!settings.notify || Date.now() < pausedUntil) return;
   const now = Date.now();
   const shown = shownAlerts();
   const due = [];

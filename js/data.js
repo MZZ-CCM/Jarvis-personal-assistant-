@@ -9,6 +9,7 @@
 
 import { supabase } from './auth.js';
 import { toast } from './ui.js';
+import { isPhone, settings } from './store.js';
 
 const KINDS = ['reminders', 'notes', 'updates'];
 const empty = () => ({ reminders: [], notes: [], updates: [] });
@@ -53,10 +54,21 @@ export const get = (kind, id) => db[kind].find((x) => x.id === id);
 const iso = (ms) => (ms == null ? null : new Date(ms).toISOString());
 const ms = (ts) => (ts == null ? null : Date.parse(ts));
 
+/** The exact moment a reminder should alert (same rules as the in-app clock). */
+function notifyAtOf(x) {
+  if (!x.date || x.done) return null;
+  const minutes = x.alert ?? settings.alertMinutes ?? 0;
+  if (minutes < 0) return null;
+  const [y, m, d] = x.date.split('-').map(Number);
+  if (!x.time) return new Date(y, m - 1, d, 9, 0).toISOString(); // all-day: 9 AM that morning
+  const [hh, mm] = x.time.split(':').map(Number);
+  return new Date(new Date(y, m - 1, d, hh, mm).getTime() - minutes * 60000).toISOString();
+}
+
 function toRow(kind, x) {
   const base = { id: x.id, user_id: userId, sample: !!x.sample, created_at: iso(x.createdAt), updated_at: iso(x.updatedAt) };
   if (kind === 'reminders') {
-    return { ...base, title: x.title, date: x.date || null, time: x.date ? x.time || null : null, notes: x.notes || '', alert: x.alert ?? null, done: !!x.done, done_at: iso(x.doneAt) };
+    return { ...base, title: x.title, date: x.date || null, time: x.date ? x.time || null : null, notes: x.notes || '', alert: x.alert ?? null, done: !!x.done, done_at: iso(x.doneAt), notify_at: notifyAtOf(x) };
   }
   if (kind === 'notes') return { ...base, title: x.title || '', body: x.body || '', pinned: !!x.pinned };
   return { ...base, text: x.text, at: iso(x.at) };
@@ -65,7 +77,7 @@ function toRow(kind, x) {
 function fromRow(kind, r) {
   const base = { id: r.id, sample: r.sample, createdAt: ms(r.created_at), updatedAt: ms(r.updated_at) };
   if (kind === 'reminders') {
-    return { ...base, title: r.title, date: r.date, time: r.time, notes: r.notes, alert: r.alert, done: r.done, doneAt: ms(r.done_at) };
+    return { ...base, title: r.title, date: r.date, time: r.time, notes: r.notes, alert: r.alert, done: r.done, doneAt: ms(r.done_at), notifyAt: r.notify_at };
   }
   if (kind === 'notes') return { ...base, title: r.title, body: r.body, pinned: r.pinned };
   return { ...base, text: r.text, at: ms(r.at) };
@@ -169,6 +181,16 @@ async function pull() {
   persist();
   emit();
   if (!queue.length) setStatus('synced');
+  backfillAlertTimes();
+}
+
+/** Reminders saved before background notifications existed get their alert time filled in once. */
+function backfillAlertTimes() {
+  const stale = db.reminders.filter((r) => !r.done && r.date && r.notifyAt === null && notifyAtOf(r));
+  for (const r of stale) {
+    r.notifyAt = notifyAtOf(r);
+    enqueue({ op: 'upsert', kind: 'reminders', id: r.id, item: r });
+  }
 }
 
 function subscribeLive() {
@@ -371,9 +393,14 @@ export function addSample() {
 
 export async function loadProfile() {
   if (!supabase || !userId) return null;
-  const { data, error } = await supabase.from('profiles').select('name, signature, tone, alert_minutes').eq('id', userId).maybeSingle();
+  const { data, error } = await supabase.from('profiles')
+    .select('name, signature, tone, alert_minutes, ai_engine, ai_model_computer, ai_model_phone, ollama_model')
+    .eq('id', userId).maybeSingle();
   if (error || !data) return null;
-  return { name: data.name, signature: data.signature, tone: data.tone, alertMinutes: data.alert_minutes };
+  const profile = { name: data.name, signature: data.signature, tone: data.tone, alertMinutes: data.alert_minutes, engine: data.ai_engine, ollamaModel: data.ollama_model };
+  const model = isPhone ? data.ai_model_phone : data.ai_model_computer;
+  if (model) profile.localModel = model; // otherwise keep this device's sensible default
+  return profile;
 }
 
 export async function saveProfile(patch) {
@@ -383,6 +410,9 @@ export async function saveProfile(patch) {
   if ('signature' in patch) row.signature = String(patch.signature).slice(0, 500);
   if ('tone' in patch) row.tone = patch.tone;
   if ('alertMinutes' in patch) row.alert_minutes = patch.alertMinutes;
+  if ('engine' in patch) row.ai_engine = patch.engine;
+  if ('localModel' in patch) row[isPhone ? 'ai_model_phone' : 'ai_model_computer'] = patch.localModel;
+  if ('ollamaModel' in patch) row.ollama_model = String(patch.ollamaModel || '').slice(0, 100);
   if (!Object.keys(row).length) return;
   const { error } = await supabase.from('profiles').update(row).eq('id', userId);
   if (error) toast(`Couldn’t save your profile: ${error.message}`, 'error');

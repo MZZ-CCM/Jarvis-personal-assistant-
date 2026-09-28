@@ -179,7 +179,8 @@ function contextFor(question) {
 
 function systemPrompt(question) {
   const who = settings.name || 'the user';
-  return `You are Jarvis, ${who}'s personal assistant: warm, calm and brief, with a hint of dry wit.
+  const hon = settings.honorific ? `\nAddress ${who} as "${settings.honorific}" now and then, in the manner of a composed British butler.` : '';
+  return `You are Jarvis, ${who}'s personal assistant: warm, calm and brief, with a hint of dry wit.${hon}
 You know ONLY what is in ${who}'s data below. Use it to answer. Never invent reminders, events, notes or facts that aren't there; if something isn't in the data, say so plainly.
 You cannot create or change items yourself. If ${who} wants something saved, tell them to say it like: “Remind me to … at …”, “Note: …” or “Update: …”.
 Keep replies under 110 words. Plain text; "- " bullets are fine; use **bold** sparingly.
@@ -211,7 +212,17 @@ function localAnswer(text) {
  * Responds to one message. history = earlier [{role:'user'|'jarvis', text}] turns.
  * Returns { text, actions, command? }.
  */
+/* ---------- Extensions (e.g. the Stark edition's protocols, timers, weather) ---------- */
+
+const skills = [];
+/** A skill gets (text, ctx) and returns { text, actions } to handle a message, or null to pass. */
+export function registerSkill(fn) { skills.push(fn); }
+
 export async function respond(text, { history = [], onStep, onToken } = {}) {
+  for (const skill of skills) {
+    const out = await skill(text, { onStep, onToken });
+    if (out) return { actions: [], ...out };
+  }
   const cmd = parseCommand(text);
   if (cmd) {
     const out = runCommand(cmd);

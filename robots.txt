@@ -1,0 +1,12 @@
+# Jarvis — only the public pages are meant for search engines.
+User-agent: *
+Allow: /$
+Allow: /privacy
+Allow: /terms
+Allow: /support
+Disallow: /js/
+Disallow: /css/
+Disallow: /supabase/
+
+# Replace YOUR-APP with your real Vercel address before launch.
+Sitemap: https://YOUR-APP.vercel.app/sitemap.xml

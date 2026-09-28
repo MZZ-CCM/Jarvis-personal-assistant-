@@ -1,11 +1,13 @@
 // Offline shell. Network-first so updates show up on the next open;
 // the cache is only a fallback when there's no signal.
-const VERSION = 'jarvis-v5';
+const VERSION = 'jarvis-v7';
 const SHELL = [
-  './', './index.html', './manifest.webmanifest',
+  './', './index.html', './manifest.webmanifest', './hud.html', './manifest-hud.webmanifest', './css/stark.css',
+  './js/stark/stark.js', './js/stark/hud.js', './js/stark/skills.js', './js/stark/weather.js',
+  './js/stark/diagnostics.js', './js/stark/timers.js', './js/stark/clap.js',
   './css/fonts.css', './css/app.css', './css/immersive.css', './css/desktop.css', './css/features.css',
   './js/app.js', './js/ui.js', './js/util.js', './js/store.js', './js/data.js', './js/when.js',
-  './js/config.js', './js/auth.js', './js/vendor/supabase.js',
+  './js/config.js', './js/auth.js', './js/push.js', './js/vendor/supabase.js',
   './js/brain.js', './js/ai.js', './js/ai-worker.js', './js/notify.js', './js/conversation.js',
   './js/views/today.js', './js/views/reminders.js', './js/views/notes.js', './js/views/capture.js', './js/views/draft.js',
   './js/views/jarvis.js', './js/views/voice.js', './js/views/settings.js', './js/views/account.js',
@@ -62,4 +64,20 @@ self.addEventListener('notificationclick', (e) => {
     const q = id && action !== 'open' ? `?act=${action}&id=${encodeURIComponent(id)}` : '';
     return self.clients.openWindow(`./#/reminders${q}`);
   })());
+});
+
+// A reminder pushed by the server — shown even when Jarvis is closed.
+self.addEventListener('push', (e) => {
+  let msg = {};
+  try { msg = e.data ? e.data.json() : {}; } catch { msg = { title: 'Jarvis', body: e.data?.text() || '' }; }
+  e.waitUntil(self.registration.showNotification(msg.title || 'Jarvis', {
+    body: msg.body || '',
+    tag: msg.tag,
+    data: msg.data || {},
+    icon: 'icons/icon-192.png',
+    badge: 'icons/icon-192.png',
+    renotify: true,
+    requireInteraction: true,
+    actions: msg.data?.id ? [{ action: 'done', title: 'Done' }, { action: 'snooze', title: 'Snooze 10 min' }] : [],
+  }));
 });

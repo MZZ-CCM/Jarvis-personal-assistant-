@@ -2,7 +2,7 @@ import { h, icon, iconButton, mountPage, section, empty, orb, richText, plainTex
 import { settings, local, firstName } from '../store.js';
 import * as D from '../data.js';
 import { whenLabel } from '../when.js';
-import { aiReady } from '../ai.js';
+import { aiReady, needsBrainHere, modelInfo, loadLocal, onStatus } from '../ai.js';
 import { briefing, localBriefing } from '../brain.js';
 import { greeting, startOfDay, addDays, fmtTime, ymd, isIOS, isStandalone } from '../util.js';
 import { openCapture, openReminder, openNote, openUpdate } from './capture.js';
@@ -32,6 +32,7 @@ export function renderToday() {
 
   if (isIOS() && !isStandalone() && !local.get('installHintDismissed')) rail.append(installCard());
   const brief = briefingCard();
+  if (needsBrainHere() && !local.get('brainCardDismissed')) rail.append(brainCard());
   rail.append(brief.el, captureBar());
 
   content.append(h('div', { class: 'today-grid' },
@@ -195,6 +196,40 @@ function captureBar() {
       chip('note', 'Note', () => openCapture({ kind: 'note' })),
       chip('pulse', 'Update', () => openCapture({ kind: 'update' })),
       chip('mail', 'Reply help', () => openDraft())));
+}
+
+/** Your account uses the on-device brain, but it isn't on this device yet. */
+function brainCard() {
+  const m = modelInfo();
+  const bar = h('div', { class: 'progress', hidden: true }, h('i'));
+  const text = h('p', { class: 'card-text' }, `Your account uses the ${m.name} brain. Download it once on this device (${m.size}, free, best on Wi-Fi) and Jarvis can chat, brief you and draft replies here too.`);
+  const go = h('button', { class: 'btn btn-primary btn-sm', type: 'button' }, icon('download'), `Download ${m.size}`);
+  const later = h('button', { class: 'btn btn-plain btn-sm', type: 'button', onclick: () => { local.set('brainCardDismissed', true); card.remove(); } }, 'Not now');
+  const card = h('div', { class: 'card note brain-card' },
+    icon('chip'),
+    h('div', { style: 'flex:1;min-width:0' },
+      h('div', { class: 'card-title' }, 'Set up your AI brain on this device'),
+      text, bar,
+      h('div', { class: 'actions' }, go, later)));
+  go.addEventListener('click', async () => {
+    go.disabled = true; later.hidden = true; bar.hidden = false;
+    const off = onStatus((st) => {
+      bar.firstChild.style.transform = `scaleX(${Math.max(0.02, st.progress || 0)})`;
+      text.textContent = st.state === 'error' ? st.text : `Downloading… ${Math.round((st.progress || 0) * 100)}%`;
+    });
+    try {
+      await loadLocal();
+      toast(`${m.name} brain ready on this device`);
+      card.remove();
+      location.hash === '#/today' && renderToday();
+    } catch (e) {
+      toast(e.message, 'error');
+      go.disabled = false; later.hidden = false;
+    } finally {
+      off();
+    }
+  });
+  return card;
 }
 
 function installCard() {

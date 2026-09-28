@@ -1,7 +1,7 @@
 // Settings live only on this device (localStorage).
 
 const KEY = 'jarvis.settings';
-const isPhone = typeof matchMedia !== 'undefined' && matchMedia('(max-width: 700px), (pointer: coarse)').matches;
+export const isPhone = typeof matchMedia !== 'undefined' && matchMedia('(max-width: 700px), (pointer: coarse)').matches;
 
 const defaults = {
   name: '',
@@ -13,6 +13,7 @@ const defaults = {
   ollamaUrl: 'http://localhost:11434',
   ollamaModel: '',
   speak: false,
+  honorific: '',                         // Stark edition: 'sir' | 'ma’am' | a name | ''
   notify: true,
   sound: true,
   alertMinutes: 0,                       // default alert: at the time of the reminder
@@ -25,8 +26,10 @@ function load() {
 
 export const settings = { ...defaults, ...load() };
 
-// Name, sign-off, reply tone and default alert belong to your account and sync.
-export const PROFILE_KEYS = ['name', 'signature', 'tone', 'alertMinutes'];
+// Name, sign-off, reply tone, default alert and your AI brain choice belong to
+// your account and sync. (The brain's size is remembered separately for phones and
+// computers; the downloaded brain itself stays on each device.)
+export const PROFILE_KEYS = ['name', 'signature', 'tone', 'alertMinutes', 'engine', 'localModel', 'ollamaModel'];
 let profileHook = null;
 export const onProfileChange = (fn) => { profileHook = fn; };
 

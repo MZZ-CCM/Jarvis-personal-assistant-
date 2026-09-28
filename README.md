@@ -24,6 +24,24 @@ A private personal assistant for your **iPhone and computer**. You tell it your 
 - "Done with the invoice" / "Delete reminder to buy milk"
 - "What's on today?" / "Where's the spare key?" / "What's coming up this week?"
 
+## J.A.R.V.I.S. — Stark edition (`hud.html`)
+
+A second front door to the same app, with the same account and data, plus an Iron Man layer. `index.html` is unchanged.
+Open `http://localhost:8080/hud.html` (or `/hud.html` on your hosted address). To install it separately, use Add to Home Screen from that page.
+
+| Feature | How |
+|---|---|
+| **Boot sequence** | Cinematic start-up on first open each session. Tap to engage and Jarvis greets you by voice: “Good evening, sir. It’s 9:40. You have 2 objectives today…” |
+| **HUD** | Press **H** or tap the arc-reactor button (or say “open the HUD”). It shows a reactor clock, live weather, today’s objectives, the updates log (“intel”), device diagnostics, a 12-hour radar of your reminders, and timers. |
+| **Protocols** | “Engage **focus** protocol” (25 min, alerts held; “…for 50 minutes” works), “**morning** protocol” (weather + briefing), “**wind-down** protocol”, “**clean slate** protocol” (clears completed reminders, asks first), and “**house party** protocol” (try it). “List protocols” shows them all. |
+| **Timers** | “Set a timer for 10 minutes”, “timer 90 seconds called pasta”, “how long left on my timer”, “cancel timers”. You get a notification and a spoken alert when one ends. |
+| **Weather** | “What’s the weather?”, “…tomorrow?”, “Set weather city to Manchester”. From [Open-Meteo](https://open-meteo.com): free, no key, no account. Uses your approximate location (rounded to ~1 km) or a city you choose. |
+| **Diagnostics** | “Run diagnostics” reports power, network, storage, processor, graphics, AI brain, account sync and alerts. |
+| **Double-clap to summon** | Turn it on in the HUD footer. The microphone only measures loudness spikes on your device: nothing is recorded, recognised or sent. |
+| **Personality** | Jarvis calls you **Sir** by default. Change it to Ma’am, your name, or nothing in the HUD footer. |
+
+> If you use accounts on `hud.html`, add its address (for example `http://localhost:8080/hud.html`) to Supabase › Authentication › **Redirect URLs** too, so email links return to it.
+
 ## Accounts & security (Supabase)
 
 - **Sign up / sign in** with email + password. Email confirmation, **Forgot password**, **Change password**, **Sign out**, **Sign out of all devices**, and **Delete account** (type DELETE to confirm; it erases everything) are all built in.
@@ -118,6 +136,8 @@ js/vendor/web-llm.js    WebLLM 0.2.85 (Apache-2.0), bundled
 js/vendor/supabase.js   supabase-js 2.117.2 (MIT), bundled
 supabase/migrations/    Database schema + Row Level Security
 js/views/               Today, Reminders, Notes, Jarvis chat, Jarvis Mode, Settings…
+hud.html, js/stark/     Stark edition: boot, HUD, protocols, timers, weather, diagnostics, clap
+css/stark.css           Stark edition styling
 sw.js                   Offline support + notification buttons
 ```
 

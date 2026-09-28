@@ -6,6 +6,7 @@ import * as D from '../data.js';
 import { TONES } from '../brain.js';
 import { MODELS, modelInfo, webgpuSupported, loadLocal, deleteLocal, getStatus, onStatus, testOllama, aiReady } from '../ai.js';
 import { requestNotifications, notificationState, sendTestNotification, ALERT_OPTIONS } from '../notify.js';
+import { pushSupported, pushActive, enablePush, disablePush, listDevices, removeDevice } from '../push.js';
 import { debounce } from '../util.js';
 
 const savedToast = debounce(() => toast('Saved'), 900);
@@ -95,6 +96,7 @@ export function renderSettings() {
         class: 'btn btn-primary btn-sm', type: 'button',
         onclick: async () => { const r = await requestNotifications(); toast(r === 'granted' ? 'Notifications on' : 'Notifications not allowed', r === 'granted' ? 'ok' : 'error'); renderSettings(); },
       }, 'Turn On') : null),
+    backgroundRow(perm),
     testBtn,
     selectRow('Default alert', 'alertMinutes', ALERT_OPTIONS, { cast: Number }),
     switchRow('Remind me while Jarvis is open', 'notify'),
@@ -190,7 +192,7 @@ function brainSection() {
         downloaded ? h('span', { class: 'badge' }, 'On device') : null));
       }
       rows.push(downloadRow());
-      footnote = 'The brain runs entirely on your device — nothing you type is sent anywhere. It downloads once (free, best on Wi-Fi), then works offline.';
+      footnote = 'Your choice follows your account (separately for phones and computers). The brain itself downloads once per device — free, best on Wi-Fi — then runs entirely on that device and works offline. Nothing you type is sent anywhere.';
     } else if (settings.engine === 'ollama') {
       const result = h('div', { class: 'row-sub', style: 'white-space:normal' });
       rows.push(textField('Ollama address', 'ollamaUrl', { placeholder: 'http://localhost:11434' }));
@@ -344,4 +346,50 @@ function openDeleteAccount() {
     ],
   });
   confirmInput.addEventListener('input', () => s.setPrimaryEnabled(confirmInput.value.trim() === 'DELETE'));
+}
+
+/* ---------- Background notifications (Web Push) ---------- */
+
+function backgroundRow(perm) {
+  const sub = h('div', { class: 'row-sub', style: 'white-space:normal' });
+  const btn = h('button', { class: 'btn btn-sm', type: 'button' });
+  const devices = h('div', { class: 'device-list' });
+
+  const draw = () => {
+    const on = pushActive();
+    sub.textContent = !pushSupported()
+      ? 'Not available in this browser. On iPhone, add Jarvis to your Home Screen first.'
+      : on ? 'On — reminders arrive even when Jarvis is closed.' : 'Off — reminders only alert while Jarvis is open.';
+    btn.className = `btn btn-sm ${on ? 'btn-plain' : 'btn-primary'}`;
+    btn.textContent = on ? 'Turn off' : 'Turn on';
+    btn.hidden = !pushSupported() || perm === 'denied';
+    if (on) drawDevices();
+    else devices.replaceChildren();
+  };
+
+  const drawDevices = async () => {
+    const list = await listDevices().catch(() => []);
+    devices.replaceChildren(...list.map((d) => h('div', { class: 'device' },
+      h('span', {}, d.device || 'Device', d.thisDevice ? h('small', {}, ' · this device') : null),
+      d.thisDevice ? null : h('button', { class: 'text-btn small', type: 'button', onclick: async () => { await removeDevice(d.id); drawDevices(); } }, 'Remove'))));
+  };
+
+  btn.addEventListener('click', async () => {
+    setLoading(btn, true);
+    try {
+      if (pushActive()) { await disablePush(); toast('Background notifications off for this device'); }
+      else {
+        if (notificationState() !== 'granted' && (await requestNotifications()) !== 'granted') throw new Error('Notifications weren’t allowed.');
+        await enablePush();
+        toast('Background notifications on');
+      }
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setLoading(btn, false); draw(); }
+  });
+
+  draw();
+  return h('div', { class: 'row', style: 'flex-wrap:wrap' },
+    icon('bell', { size: 20 }),
+    h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, h('span', {}, 'When Jarvis is closed')), sub, devices),
+    btn);
 }

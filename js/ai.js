@@ -93,7 +93,7 @@ export function loadLocal(key = settings.localModel) {
     });
     engine = eng;
     loadedKey = key;
-    save({ downloaded: { ...(settings.downloaded || {}), [key]: true } });
+    save({ downloaded: { ...(settings.downloaded || {}), [key]: true } }, { fromServer: true });
     setStatus({ state: 'ready', progress: 1, text: 'Ready' });
     return eng;
   })()
@@ -106,13 +106,34 @@ export function loadLocal(key = settings.localModel) {
   return loading;
 }
 
+/**
+ * Checks which brains are really downloaded in this browser (e.g. after signing in
+ * on a new device, or if site data was cleared) and corrects the record.
+ */
+export async function verifyDownloads() {
+  if (!webgpuSupported()) return settings.downloaded || {};
+  try {
+    const { hasModelInCache } = await lib();
+    const found = {};
+    for (const m of MODELS) if (await hasModelInCache(await modelId(m.key))) found[m.key] = true;
+    save({ downloaded: found }, { fromServer: true });
+    return found;
+  } catch {
+    return settings.downloaded || {};
+  }
+}
+
+/** True when your account uses the on-device brain but this device doesn't have it yet. */
+export const needsBrainHere = () =>
+  settings.engine === 'local' && webgpuSupported() && !settings.downloaded?.[settings.localModel];
+
 export async function deleteLocal(key) {
   const { deleteModelAllInfoInCache } = await lib();
   if (loadedKey === key && engine) { try { await engine.unload(); } catch { /* ignore */ } engine = null; loadedKey = null; }
   await deleteModelAllInfoInCache(await modelId(key));
   const downloaded = { ...(settings.downloaded || {}) };
   delete downloaded[key];
-  save({ downloaded });
+  save({ downloaded }, { fromServer: true });
   setStatus({ state: 'idle', progress: 0, text: '' });
 }
 
